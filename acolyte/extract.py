@@ -46,7 +46,7 @@ def extract_tracks(mkv: Path, out_dir: Path, tracks: list[int]) -> list[Path]:
                     continue
                 for frame in packet.decode():
                     for rf in resamplers[packet.stream.index].resample(frame):
-                        writers[si].writeframes(rf.planes[0].to_bytes())
+                        writers[si].writeframes(bytes(rf.planes[0]))
         finally:
             for w in writers:
                 w.close()

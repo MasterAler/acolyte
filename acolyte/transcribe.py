@@ -25,7 +25,28 @@ def _fmt(secs: float) -> str:
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
 
 
+def _ensure_cuda_dlls(device: str):
+    """ctranslate2 требует cuBLAS/cuDNN из CUDA 12; проще заимствовать у локального Ollama,
+    чем тянуть ~1 ГБ pip-колёсами. Альтернатива для чужих машин: pip install nvidia-cublas-cu12 nvidia-cudnn-cu12."""
+    import ctypes
+    import os
+    import sys
+
+    if sys.platform != "win32" or device == "cpu":
+        return
+    try:
+        ctypes.CDLL("cublas64_12.dll")
+        return
+    except OSError:
+        pass
+    base = Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "lib" / "ollama"
+    for sub in sorted(base.glob("cuda_v12*")) if base.exists() else []:
+        os.add_dll_directory(str(sub))
+        os.environ["PATH"] = str(sub) + os.pathsep + os.environ.get("PATH", "")
+
+
 def load_whisper(cfg):
+    _ensure_cuda_dlls(cfg.whisper_device)
     from faster_whisper import WhisperModel
 
     return WhisperModel(cfg.whisper_model, device=cfg.whisper_device, compute_type=cfg.whisper_compute)
@@ -71,7 +92,7 @@ def transcribe_session(session_dir: Path, cfg, model=None) -> Path:
         for r in rows:
             tcode = _fmt(r["t"])
             if "marker" in r:
-                md.append(f"`[{tcode}]` **&gt;&gt;&gt; {MARKER_TITLES.get(r['marker'], r['marker'].upper())}**")
+                md.append(f"`[{tcode}]` **◆ {MARKER_TITLES.get(r['marker'], r['marker'].upper())}**")
                 jf.write(json.dumps({"t": r["t"], "marker": r["marker"]}, ensure_ascii=False) + "\n")
             else:
                 md.append(f"`[{tcode}]` **{r['speaker']}:** {r['text']}")

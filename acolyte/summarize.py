@@ -82,10 +82,12 @@ def _chunk(rows: list[dict], target_chars: int = 4500) -> list[list[dict]]:
 
 
 def _rows_to_text(rows: list[dict]) -> str:
+    from .transcribe import MARKER_TITLES
+
     out = []
     for r in rows:
         if "marker" in r:
-            out.append(f">>> {r['marker'].upper()}")
+            out.append(f">>> {MARKER_TITLES.get(r['marker'], r['marker'].upper())}")
         else:
             out.append(f"[{r['t']:>8.1f}] {r['speaker']}: {r['text']}")
     return "\n".join(out)
