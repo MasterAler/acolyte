@@ -45,13 +45,23 @@ class ObsBridge:
             host=self.cfg.obs_host, port=self.cfg.obs_port, password=self.cfg.obs_password
         )
 
-        @evc.event.on("RecordStateChanged")
-        def _on_record(m):
-            data = getattr(m, "event_data", {}) or {}
-            path = data.get("outputPath") or data.get("output_path")
+        def _on_record_state_changed(m):
+            if isinstance(m, dict):
+                path = m.get("output_path") or m.get("outputPath")
+            else:
+                path = getattr(m, "output_path", None) or getattr(m, "outputPath", None)
             if path:
                 with self._state_lock:
                     self._last_output_path = path
+
+        # obsws-python: callback.register([on_<snake_case>]) (в разных версиях fns=/functions=)
+        try:
+            evc.callback.register([_on_record_state_changed])
+        except AttributeError:
+            # старые версии: декоратор event.on
+            evc.event.on("RecordStateChanged")(
+                lambda m: _on_record_state_changed(getattr(m, "event_data", {}) or {})
+            )
 
         self._evt = evc
 
@@ -76,10 +86,13 @@ class ObsBridge:
 
     def record_status(self) -> dict:
         st = self.req.get_record_status()
+        # obsws-python при пустом ответе (не пишем) может вернуть класс вместо экземпляра
+        active = getattr(st, "active", None)
+        paused = getattr(st, "paused", None)
         return {
-            "active": bool(st.active),
-            "paused": bool(st.paused),
-            "duration_ms": getattr(st, "duration", 0),
+            "active": None if active is None else bool(active),
+            "paused": None if paused is None else bool(paused),
+            "duration_ms": getattr(st, "duration", 0) or 0,
         }
 
     def start(self):

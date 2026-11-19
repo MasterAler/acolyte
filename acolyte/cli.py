@@ -34,7 +34,11 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
         if sess.recording and not sess.paused:
             voice.ack("already")
             return
-        if sess.paused or st["paused"]:
+        if sess.paused:
+            obs.resume()
+            sess.on_resume()
+        elif st["paused"]:
+            print("! пауза ставилась руками в OBS — таймкоды маркеров могут уехать")
             obs.resume()
             sess.on_resume()
         else:
@@ -241,6 +245,9 @@ def main(argv=None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
+    import logging
+
+    logging.getLogger("obsws_python").setLevel(logging.CRITICAL)  # трейсбек при отказе связи только мешает
     ap = argparse.ArgumentParser(prog="acolyte", description="Голосовой писарь для Jitsi-созвонов")
     ap.add_argument("--config", type=Path, default=None, help="путь к acolyte.toml")
     sub = ap.add_subparsers(dest="cmd", required=True)

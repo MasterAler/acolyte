@@ -105,7 +105,7 @@ def run(cfg, probe: bool = False) -> int:
         _warn(f"ctranslate2: {e}")
 
     hub = Path.home() / ".cache" / "huggingface" / "hub"
-    turbo = list(hub.glob("models--Systran--faster-whisper-large-v3-turbo")) if hub.exists() else []
+    turbo = list(hub.glob(f"models--*--faster-whisper-{cfg.whisper_model}")) if hub.exists() else []
     if turbo:
         _ok("модель whisper large-v3-turbo в кэше")
     else:
