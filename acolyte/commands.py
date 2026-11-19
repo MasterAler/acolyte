@@ -10,6 +10,7 @@ WAKE = "аколит"
 WAKE_AT_START_THRESHOLD = 65   # команда обычно начинается с «Аколит, …» — прощаем варинаты «о колет», «а коллетт»
 WAKE_ANYWHERE_THRESHOLD = 80   # wake в середине фразы требует уверенного совпадения
 INTENT_THRESHOLD = 80
+SHORT_KW_THRESHOLD = 88        # короткие ключевые слова («стоп») сравниваем с токенами: «топ» даёт 85.7 и должен отваливаться
 MAX_UTTERANCE_CHARS = 100
 
 INTENTS: dict[str, list[str]] = {
@@ -17,8 +18,8 @@ INTENTS: dict[str, list[str]] = {
     "pause": ["стоп", "пауза", "подожди"],
     "finish": ["конец", "заверши", "финиш"],
     "solution": ["решение", "решено"],
-    "offtopic": ["это оффтоп", "это офтоп", "это в топ", "оффтоп", "офтоп", "не по теме"],
-    "ontopic": ["оффтоп окончен", "офтоп окончен", "оффтоп закончен", "окончен", "закончен", "в тему"],
+    "offtopic": ["это флуд", "это оффтоп", "это офтоп", "это в топ", "флуд", "оффтоп", "офтоп", "не по теме"],
+    "ontopic": ["флуд окончен", "оффтоп окончен", "офтоп окончен", "оффтоп закончен", "окончен", "закончен", "в тему"],
     "undo": ["отмена", "отмени"],
 }
 
@@ -54,10 +55,16 @@ def match(text: str) -> tuple[str, str] | None:
     )
     best, best_score = None, 0
     for kw, intent in pairs:
-        score = fuzz.partial_ratio(kw, norm)
-        if score > best_score:
+        if len(kw.replace(" ", "")) <= 4:
+            tokens = norm.split()
+            score = max((fuzz.ratio(kw, t) for t in tokens), default=0)
+            passed = score >= SHORT_KW_THRESHOLD
+        else:
+            score = fuzz.partial_ratio(kw, norm)
+            passed = score >= INTENT_THRESHOLD
+        if passed and score > best_score:
             best, best_score = intent, score
-    if best is None or best_score < INTENT_THRESHOLD:
+    if best is None:
         return "unknown", text
     return best, text
 
@@ -70,6 +77,8 @@ if __name__ == "__main__":
         ("аколит это оффтоп", "offtopic"),
         ("аколит оффтоп окончен", "ontopic"),
         ("аколит офтоп окончен", "ontopic"),
+        ("а колит это флуд", "offtopic"),
+        ("а колит флуд окончен", "ontopic"),
         ("так вот аколит это решение точно", "solution"),
         ("аколет заверши встречу", "finish"),
         ("аколит отмена", "undo"),
@@ -89,6 +98,8 @@ if __name__ == "__main__":
         ("а колит авто окончен", "ontopic"),
         ("а колит отмена", "undo"),
         ("а колит конец", "finish"),
+        # «топ» не должен прилипать к «стоп»
+        ("а колит топ продаж", "unknown"),
     ]
     for text, expected in tests:
         got = match(text)

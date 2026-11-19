@@ -23,7 +23,7 @@ PHRASES = {
     "pause": "Пауза.",
     "finish": "Завершил. Готовлю выжимку.",
     "solution": "Решение отмечено.",
-    "offtopic": "Оффтоп.",
+    "offtopic": "Флуд.",
     "offtopic_off": "В тему.",
     "undo": "Отменил.",
     "already": "Уже пишу.",

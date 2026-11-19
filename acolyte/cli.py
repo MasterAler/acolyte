@@ -35,8 +35,16 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
             voice.ack("already")
             return
         if sess.paused:
-            obs.resume()
-            sess.on_resume()
+            if st["active"] and st["paused"] is False:
+                print("! рассинхрон: OBS уже пишет — продолжаю без resume")
+                sess.on_resume()
+            elif st["active"] is False:
+                print("! запись в OBS остановилась; стартую заново НОВЫМ файлом (старый останется в папке записи)")
+                obs.start()
+                sess.on_resume()
+            else:
+                obs.resume()
+                sess.on_resume()
         elif st["paused"]:
             print("! пауза ставилась руками в OBS — таймкоды маркеров могут уехать")
             obs.resume()
@@ -103,7 +111,7 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
         sess.offtopic = True
         mk = sess.add_marker("offtopic_on", raw)
         voice.ack("offtopic")
-        print(f"[{mk['tcode']}] оффтоп начался")
+        print(f"[{mk['tcode']}] флуд начался")
 
     elif intent == "ontopic":
         if not sess.offtopic:
@@ -112,7 +120,7 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
         sess.offtopic = False
         mk = sess.add_marker("offtopic_off", raw)
         voice.ack("offtopic_off")
-        print(f"[{mk['tcode']}] оффтоп окончен")
+        print(f"[{mk['tcode']}] флуд окончен")
 
     elif intent == "undo":
         mk = sess.undo_last()
@@ -173,7 +181,7 @@ def cmd_serve(cfg, verbose=False, no_summarize=False) -> int:
         except Exception:
             print("хоткеи недоступны (pip install keyboard)\n")
 
-    print("Аколит на посту. Команды: «Аколит, запись» · «стоп» · «это решение» · «это оффтоп» · «оффтоп окончен» · «отмена» · «конец». Ctrl+C — выход.\n")
+    print("Аколит на посту. Команды: «Аколит, запись» · «стоп» · «это решение» · «это флуд» · «флуд окончен» · «отмена» · «конец». Ctrl+C — выход.\n")
     mic.start()
     try:
         while True:
@@ -198,6 +206,10 @@ def cmd_serve(cfg, verbose=False, no_summarize=False) -> int:
                 _dispatch(intent, payload if kind == "utt" else "", sess, obs, voice, cfg, no_summarize)
             except ObsError as e:
                 print(f"! OBS: {e}")
+                voice.ack("error")
+            except Exception as e:
+                # Аколит не имеет права умирать посреди встречи
+                print(f"! ошибка обработки команды ({type(e).__name__}): {e}")
                 voice.ack("error")
             if sess.finished:
                 sess = SessionState(cfg.sessions_dir)

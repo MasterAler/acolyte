@@ -13,8 +13,8 @@ MARKER_TITLES = {
     "pause": "ПАУЗА",
     "end": "КОНЕЦ",
     "solution": "РЕШЕНИЕ",
-    "offtopic_on": "ОФФТОП НАЧАЛО",
-    "offtopic_off": "ОФФТОП КОНЕЦ",
+    "offtopic_on": "ФЛУД НАЧАЛО",
+    "offtopic_off": "ФЛУД КОНЕЦ",
 }
 
 
