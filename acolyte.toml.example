@@ -1,0 +1,31 @@
+# Скопируй в acolyte.toml и подправь под себя. acolyte.toml в .gitignore — там пароль OBS.
+
+[obs]
+host = "localhost"
+port = 4455
+password = ""                      # пароль из Tools → WebSocket Server Settings (пусто, если auth выключен)
+exe = 'C:\Program Files\obs-studio\bin\64bit\obs64.exe'
+
+[tracks]
+mic = 0                            # индекс аудиодорожки с микрофоном в mkv (0 = Track 1)
+desktop = 1                        # дорожка со звуком системы (1 = Track 2)
+
+[asr]
+model = "large-v3-turbo"
+device = "cuda"                    # "cpu", если CUDA недоступна
+compute = "int8_float16"           # для cpu: "int8"
+
+[llm]
+url = "http://127.0.0.1:11434"
+model = "qwen3.5:9b"
+
+[misc]
+voice_tts = true                   # голосовые подтверждения (иначе только писк)
+hotkeys = false                    # Ctrl+Alt+J/S/O/K; требует pip install keyboard
+
+[confluence]
+url = ""                           # например https://confluence.example.ru
+user = ""
+token = ""                         # Personal Access Token или пароль
+space = ""                         # ключ пространства для черновиков
+parent_id = ""                     # id родительской страницы (можно пусто)

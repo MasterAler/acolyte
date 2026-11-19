@@ -1,0 +1,28 @@
+[project]
+name = "acolyte"
+version = "0.1.0"
+description = "Голосовой писарь для Jitsi-созвонов: OBS пишет, Аколит слушает команды, транскрибирует и делает выжимку."
+requires-python = ">=3.10"
+dependencies = [
+    "sounddevice",
+    "vosk",
+    "faster-whisper",
+    "rapidfuzz",
+    "requests",
+    "obsws-python",
+    "numpy",
+]
+
+[project.optional-dependencies]
+voice = ["pyttsx3"]
+hotkeys = ["keyboard"]
+
+[project.scripts]
+acolyte = "acolyte.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["acolyte*"]
