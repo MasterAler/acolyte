@@ -45,7 +45,8 @@ class ObsBridge:
             host=self.cfg.obs_host, port=self.cfg.obs_port, password=self.cfg.obs_password
         )
 
-        def _on_record_state_changed(m):
+        # имя функции обязано быть on_<snake_case события>: Callback.trigger матчит по нему
+        def on_record_state_changed(m):
             if isinstance(m, dict):
                 path = m.get("output_path") or m.get("outputPath")
             else:
@@ -56,11 +57,11 @@ class ObsBridge:
 
         # obsws-python: callback.register([on_<snake_case>]) (в разных версиях fns=/functions=)
         try:
-            evc.callback.register([_on_record_state_changed])
+            evc.callback.register([on_record_state_changed])
         except AttributeError:
             # старые версии: декоратор event.on
             evc.event.on("RecordStateChanged")(
-                lambda m: _on_record_state_changed(getattr(m, "event_data", {}) or {})
+                lambda m: on_record_state_changed(getattr(m, "event_data", {}) or {})
             )
 
         self._evt = evc
