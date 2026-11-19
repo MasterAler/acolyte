@@ -7,7 +7,8 @@ import re
 from rapidfuzz import fuzz
 
 WAKE = "аколит"
-WAKE_THRESHOLD = 82
+WAKE_AT_START_THRESHOLD = 65   # команда обычно начинается с «Аколит, …» — прощаем варинаты «о колет», «а коллетт»
+WAKE_ANYWHERE_THRESHOLD = 80   # wake в середине фразы требует уверенного совпадения
 INTENT_THRESHOLD = 80
 MAX_UTTERANCE_CHARS = 100
 
@@ -26,6 +27,15 @@ def normalize(text: str) -> str:
     return re.sub(r"[^\wа-я\s]", " ", t).strip()
 
 
+def _wake_present(norm: str, compact: str) -> bool:
+    tokens = norm.split()
+    for k in (1, 2):
+        head = "".join(tokens[:k])
+        if head and fuzz.ratio(WAKE, head) >= WAKE_AT_START_THRESHOLD:
+            return True
+    return fuzz.partial_ratio(WAKE, compact) >= WAKE_ANYWHERE_THRESHOLD
+
+
 def match(text: str) -> tuple[str, str] | None:
     """-> (intent, сырой текст) либо None, если фраза не команда."""
     if not text or len(text) > MAX_UTTERANCE_CHARS:
@@ -34,7 +44,7 @@ def match(text: str) -> tuple[str, str] | None:
     if not norm:
         return None
     compact = re.sub(r"\s+", "", norm)
-    if fuzz.partial_ratio(WAKE, compact) < WAKE_THRESHOLD:
+    if not _wake_present(norm, compact):
         return None
     best, best_score = None, 0
     for intent, keywords in INTENTS.items():
@@ -58,7 +68,12 @@ if __name__ == "__main__":
         ("аколит отмена", "undo"),
         ("ну и как мы видим на графике рост продаж", None),
         ("глосситальный стоп некст левел", None),
+        ("записи около пяти остановите", None),
         ("аколит жмыхни чёнить", "unknown"),
+        # реальные выводы Vosk small-ru с синтезированной речи
+        ("о колет запись итак обсудим план релиза на декабрь", "start"),
+        ("а коллетт это решение", "solution"),
+        ("выкладываем релизов в пятницу двадцатого числа", None),
     ]
     for text, expected in tests:
         got = match(text)

@@ -261,10 +261,11 @@ def main(argv=None) -> int:
     s = sub.add_parser("summarize", help="выжимка готовой сессии")
     s.add_argument("dir", type=Path)
 
-    s = sub.add_parser("publish", help="публикация выжимки")
+    s = sub.add_parser("publish", help="публикация выжимки (всегда с явным подтверждением)")
     s.add_argument("dir", type=Path)
     s.add_argument("--confluence", action="store_true")
     s.add_argument("--rag", action="store_true")
+    s.add_argument("--yes", action="store_true", help="не спрашивать подтверждение (для скриптов)")
 
     sub.add_parser("devices", help="список микрофонов")
 
@@ -296,9 +297,40 @@ def main(argv=None) -> int:
     if a.cmd == "publish":
         from .publish import export_rag, publish_confluence
 
-        if a.confluence:
+        summary_path = a.dir / "summary.md"
+        if not summary_path.exists():
+            print(f"! нет {summary_path}; сначала acolyte summarize {a.dir}")
+            return 1
+        summary = summary_path.read_text(encoding="utf-8")
+
+        targets = [t for t, on in (("confluence", a.confluence), ("rag", a.rag)) if on]
+        if not targets:
+            ans = input("Куда публиковать? [1] Confluence · [2] RAG · [3] оба · Enter — отмена: ").strip()
+            targets = {"1": ["confluence"], "2": ["rag"], "3": ["confluence", "rag"]}.get(ans, [])
+            if not targets:
+                print("Отменено.")
+                return 1
+
+        print("\n--- что уйдёт наружу ---")
+        print("\n".join(summary.splitlines()[:12]))
+        if len(summary.splitlines()) > 12:
+            print("…")
+        for t in targets:
+            if t == "confluence":
+                print(f"Назначение: Confluence {cfg.confluence_url} (space {cfg.confluence_space})")
+            else:
+                print(f"Назначение: RAG-выгрузка → {cfg.rag_jsonl}")
+        print("------------------------\n")
+
+        if not a.yes:
+            ok = input(f"Публиковать в {', '.join(targets)}? [y/N] ").strip().lower()
+            if ok not in ("y", "yes", "д", "да"):
+                print("Отменено.")
+                return 1
+
+        if "confluence" in targets:
             print(publish_confluence(a.dir, cfg))
-        if a.rag:
+        if "rag" in targets:
             p = export_rag(a.dir, cfg)
             print(f"RAG-выгрузка: {p}")
             print("Дальше проиндексируй своим пайплайном memory-rag (build_index.py).")
