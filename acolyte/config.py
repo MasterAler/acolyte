@@ -25,6 +25,7 @@ class Config:
     whisper_model: str = "large-v3-turbo"
     whisper_device: str = "cuda"
     whisper_compute: str = "int8_float16"
+    whisper_vad: float = 0.4  # порог VAD (0.5 — жёстче); 0 = выключить VAD, если в комнате музыка режет речь
 
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3.5:9b"

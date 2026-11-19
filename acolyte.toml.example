@@ -14,6 +14,7 @@ desktop = 1                        # дорожка со звуком систе
 model = "large-v3-turbo"
 device = "cuda"                    # "cpu", если CUDA недоступна
 compute = "int8_float16"           # для cpu: "int8"
+vad = 0.4                          # порог VAD; 0 = выключить (музыка в комнате режет речь фильтром)
 
 [llm]
 url = "http://127.0.0.1:11434"

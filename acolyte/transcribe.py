@@ -67,11 +67,12 @@ def transcribe_session(session_dir: Path, cfg, model=None) -> Path:
     model = model or load_whisper(cfg)
 
     entries = []
+    vad = {"threshold": cfg.whisper_vad} if cfg.whisper_vad > 0 else False
     for wav, speaker in ((mic_wav, "Я"), (desk_wav, "Участник")):
         segments, _info = model.transcribe(
             str(wav),
             language="ru",
-            vad_filter=True,
+            vad_filter=vad,
             beam_size=5,
             condition_on_previous_text=False,
         )
