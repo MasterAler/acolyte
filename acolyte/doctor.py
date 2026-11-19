@@ -83,23 +83,32 @@ def run(cfg, probe: bool = False) -> int:
                 with tempfile.TemporaryDirectory() as td:
                     t1, t2 = extract_tracks(Path(f), Path(td), [cfg.mic_track, cfg.desktop_track])
 
-                    def _rms(p):
+                    def _load(p):
                         with wavmod.open(str(p)) as w:
-                            a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32)
-                        return float(np.sqrt(np.mean(a * a))) if len(a) else 0.0
+                            return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32)
 
-                    r_mic, r_desk = _rms(t1), _rms(t2)
+                    a1, a2 = _load(t1), _load(t2)
+
+                def _rms(a):
+                    return float(np.sqrt(np.mean(a * a))) if len(a) else 0.0
+
+                r_mic, r_desk = _rms(a1), _rms(a2)
+                n = min(len(a1), len(a2))
+                corr = float(np.corrcoef(a1[:n], a2[:n])[0, 1]) if n > 1000 else 0.0
                 if r_mic < 250:
                     _warn(f"тишина на дорожке микрофона (RMS {r_mic:.0f}) — во время пробы не было речи, повтори с голосом")
-                elif r_desk > 0.3 * r_mic:
+                elif corr >= 0.5:
                     _fail(
-                        f"голос микрофона попадает на дорожку рабочего стола (RMS {r_mic:.0f}/{r_desk:.0f})",
+                        f"сигнал микрофона дублируется на дорожке рабочего стола (корреляция {corr:.2f})",
                         "Advanced Audio Properties: у каждого источника ровно одна галочка — "
                         "Микрофон → Track 1, Звук рабочего стола → Track 2.",
                     )
                     fails += 1
+                elif corr >= 0.25:
+                    _warn(f"дорожки похожи (корреляция {corr:.2f}) — повтори пробу в тишине, ничего не проигрывая")
                 else:
-                    _ok(f"дорожки разделены: микрофон RMS {r_mic:.0f}, рабочий стол {r_desk:.0f}")
+                    extra = f", рабочий стол RMS {r_desk:.0f} (что-то играло — но это не микрофон)" if r_desk > 250 else ""
+                    _ok(f"дорожки независимы (корреляция {corr:.2f}); микрофон RMS {r_mic:.0f}{extra}")
             Path(f).unlink(missing_ok=True)
     except Exception as e:
         _fail(f"OBS: {e}", "Запусти OBS, включи Tools → WebSocket Server Settings (порт 4455).")
