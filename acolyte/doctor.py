@@ -56,13 +56,13 @@ def run(cfg, probe: bool = False) -> int:
         if st["active"]:
             _warn("OBS уже пишет прямо сейчас — «Аколит, запись» откажет до остановки")
         if probe:
-            print("  пробная запись 3 с…")
+            print("  пробная запись 5 с: говори в микрофон, ничего не проигрывая…")
             obs.start()
             import time
 
-            time.sleep(3)
+            time.sleep(5)
             f = obs.stop_and_wait_file()
-            from .extract import audio_stream_count
+            from .extract import audio_stream_count, extract_tracks
 
             n = audio_stream_count(Path(f))
             if n >= 2:
@@ -74,6 +74,32 @@ def run(cfg, probe: bool = False) -> int:
                     "Properties) Mic → Track 1, Desktop Audio → Track 2.",
                 )
                 fails += 1
+            if n >= 2:
+                import tempfile
+                import wave as wavmod
+
+                import numpy as np
+
+                with tempfile.TemporaryDirectory() as td:
+                    t1, t2 = extract_tracks(Path(f), Path(td), [cfg.mic_track, cfg.desktop_track])
+
+                    def _rms(p):
+                        with wavmod.open(str(p)) as w:
+                            a = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32)
+                        return float(np.sqrt(np.mean(a * a))) if len(a) else 0.0
+
+                    r_mic, r_desk = _rms(t1), _rms(t2)
+                if r_mic < 250:
+                    _warn(f"тишина на дорожке микрофона (RMS {r_mic:.0f}) — во время пробы не было речи, повтори с голосом")
+                elif r_desk > 0.3 * r_mic:
+                    _fail(
+                        f"голос микрофона попадает на дорожку рабочего стола (RMS {r_mic:.0f}/{r_desk:.0f})",
+                        "Advanced Audio Properties: у каждого источника ровно одна галочка — "
+                        "Микрофон → Track 1, Звук рабочего стола → Track 2.",
+                    )
+                    fails += 1
+                else:
+                    _ok(f"дорожки разделены: микрофон RMS {r_mic:.0f}, рабочий стол {r_desk:.0f}")
             Path(f).unlink(missing_ok=True)
     except Exception as e:
         _fail(f"OBS: {e}", "Запусти OBS, включи Tools → WebSocket Server Settings (порт 4455).")
