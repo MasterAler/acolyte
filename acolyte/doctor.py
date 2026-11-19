@@ -94,9 +94,15 @@ def run(cfg, probe: bool = False) -> int:
 
                 r_mic, r_desk = _rms(a1), _rms(a2)
                 n = min(len(a1), len(a2))
-                corr = float(np.corrcoef(a1[:n], a2[:n])[0, 1]) if n > 1000 else 0.0
+                s1, s2 = a1[:n], a2[:n]
+                if n > 1000 and s1.std() > 0 and s2.std() > 0:
+                    corr: float | None = float(np.corrcoef(s1, s2)[0, 1])
+                else:
+                    corr = None
                 if r_mic < 250:
                     _warn(f"тишина на дорожке микрофона (RMS {r_mic:.0f}) — во время пробы не было речи, повтори с голосом")
+                elif corr is None or r_desk < 5.0:
+                    _ok(f"дорожка рабочего стола — чистая тишина (RMS {r_desk:.0f}): микрофон туда не попадает")
                 elif corr >= 0.5:
                     _fail(
                         f"сигнал микрофона дублируется на дорожке рабочего стола (корреляция {corr:.2f})",
