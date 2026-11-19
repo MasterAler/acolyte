@@ -12,12 +12,14 @@ HANGOVER_S = 0.6  # сколько ещё кормить распознават�
 
 
 class MicListener:
-    def __init__(self, on_chunk, min_rms=200, verbose=False):
+    def __init__(self, on_chunk, min_rms=200, debug=False):
         self.on_chunk = on_chunk  # on_chunk(bytes pcm s16le mono 16k)
         self.min_rms = min_rms    # гейт тишины/фонового шума: не кормим распознаватель мусором
-        self.verbose = verbose
+        self.debug = debug        # печать уровня ДО гейта
         self._stream = None
         self._speech_until = 0.0
+        self._last_print = 0.0
+        self._peak = 0.0
 
     def start(self):
         dev = sd.default.device[0]
@@ -53,6 +55,8 @@ class MicListener:
             self._stream = None
 
     def _cb(self, in_data, frames, time_info, status):
+        if self.debug:
+            self._show_level(in_data)
         if self._loud_enough(in_data):
             # sounddevice отдаёт cffi-буфер, vosk требует bytes
             self.on_chunk(bytes(in_data))
@@ -66,7 +70,7 @@ class MicListener:
         t_in = np.arange(len(a)) / self._native_rate
         self.on_chunk(np.interp(t_out, t_in, a).astype(np.int16).tobytes())
 
-    def _loud_enough(self, pcm: bytes) -> bool:
+    def _loud_enough(self, pcm) -> bool:
         if self.min_rms <= 0:
             return True
         a = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
@@ -74,3 +78,13 @@ class MicListener:
             self._speech_until = time.monotonic() + HANGOVER_S
             return True
         return time.monotonic() < self._speech_until
+
+    def _show_level(self, pcm) -> None:
+        a = np.frombuffer(pcm, dtype=np.int16).astype(np.float32)
+        self._peak = max(self._peak, float(np.sqrt(np.mean(a * a))))
+        now = time.monotonic()
+        if now - self._last_print >= 0.5:
+            bar = "#" * int(min(self._peak, 3000) / 150)
+            print(f"  [{bar:<20}] пик RMS {self._peak:>5.0f} (гейт {self.min_rms})")
+            self._last_print = now
+            self._peak = 0.0

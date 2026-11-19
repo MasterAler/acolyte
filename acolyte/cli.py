@@ -198,7 +198,7 @@ def cmd_serve(cfg, verbose=False, no_summarize=False) -> int:
     return 0
 
 
-def cmd_test_ear(cfg, seconds=0) -> int:
+def cmd_test_ear(cfg, seconds=0, debug=False) -> int:
     from .ear import Ear
     from .mic import MicListener
 
@@ -210,7 +210,7 @@ def cmd_test_ear(cfg, seconds=0) -> int:
         if text and text.strip():
             got.put(text)
 
-    mic = MicListener(on_chunk)
+    mic = MicListener(on_chunk, min_rms=cfg.mic_rms_gate, debug=debug)
     mic.start()
     print("Тест ушей: говори команды в микрофон. Ctrl+C — выход.\n")
     deadline = time.time() + seconds if seconds else None
@@ -258,6 +258,7 @@ def main(argv=None) -> int:
 
     s = sub.add_parser("test-ear", help="проверка распознавания команд без OBS")
     s.add_argument("--seconds", type=int, default=0, help="0 = до Ctrl+C")
+    s.add_argument("--debug", action="store_true", help="показывать уровень сигнала")
 
     s = sub.add_parser("doctor", help="проверка окружения")
     s.add_argument("--probe", action="store_true", help="пробная 3-сек запись через OBS")
@@ -282,7 +283,7 @@ def main(argv=None) -> int:
     if a.cmd == "serve":
         return cmd_serve(cfg, a.verbose, a.no_summarize)
     if a.cmd == "test-ear":
-        return cmd_test_ear(cfg, a.seconds)
+        return cmd_test_ear(cfg, a.seconds, a.debug)
     if a.cmd == "doctor":
         from .doctor import run
 
