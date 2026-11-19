@@ -31,6 +31,7 @@ class Config:
 
     voice_tts: bool = True
     hotkeys: bool = False
+    mic_rms_gate: int = 200
 
     confluence_url: str = ""
     confluence_user: str = ""

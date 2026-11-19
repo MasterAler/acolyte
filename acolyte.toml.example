@@ -22,6 +22,7 @@ model = "qwen3.5:9b"
 [misc]
 voice_tts = true                   # голосовые подтверждения (иначе только писк)
 hotkeys = false                    # Ctrl+Alt+J/S/O/K; требует pip install keyboard
+mic_rms_gate = 200                 # порог громкости для прослушивания команд; 0 = выкл
 
 [confluence]
 url = ""                           # например https://confluence.example.ru
