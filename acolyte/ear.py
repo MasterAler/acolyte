@@ -9,24 +9,27 @@ MIN_TEXT_LEN = 4       # короче 4 букв команды быть не м
 
 
 class Ear:
-    def __init__(self, model_dir):
+    def __init__(self, model_dir, on_raw=None):
         from vosk import KaldiRecognizer, Model
 
         self._rec = KaldiRecognizer(Model(str(model_dir)), 16000)
         self._rec.SetWords(True)
+        self.on_raw = on_raw  # диагностика: колбэк на каждый финал до фильтров
 
     def feed(self, pcm: bytes) -> str | None:
         """Возвращает текст финальной фразы (может быть пустым), None — пока фраза не закончена."""
         if self._rec.AcceptWaveform(pcm):
-            return self._filter(self._rec.Result())
+            return self._filter(self._rec.Result(), self.on_raw)
         return None
 
     def flush(self) -> str:
-        return self._filter(self._rec.FinalResult())
+        return self._filter(self._rec.FinalResult(), self.on_raw)
 
     @staticmethod
-    def _filter(raw: str) -> str:
+    def _filter(raw: str, on_raw=None) -> str:
         data = json.loads(raw)
+        if on_raw:
+            on_raw(data)
         text = (data.get("text") or "").strip()
         if len(text.replace(" ", "")) < MIN_TEXT_LEN:
             return ""

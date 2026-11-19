@@ -57,18 +57,25 @@ class MicListener:
     def _cb(self, in_data, frames, time_info, status):
         if self.debug:
             self._show_level(in_data)
-        if self._loud_enough(in_data):
-            # sounddevice отдаёт cffi-буфер, vosk требует bytes
-            self.on_chunk(bytes(in_data))
+        data = bytes(in_data)  # sounddevice отдаёт cffi-буфер, vosk требует bytes
+        if self._loud_enough(data):
+            self.on_chunk(data)
+        else:
+            # тишина должна доходить до распознавателя: иначе он никогда
+            # не увидит паузу и не финализирует фразу
+            self.on_chunk(b"\x00" * len(data))
 
     def _cb_resample(self, in_data, frames, time_info, status):
-        if not self._loud_enough(in_data):
-            return
-        a = np.frombuffer(in_data, dtype=np.int16).astype(np.float32)
-        n_out = int(len(a) * TARGET_RATE / self._native_rate)
-        t_out = np.arange(n_out) / TARGET_RATE
-        t_in = np.arange(len(a)) / self._native_rate
-        self.on_chunk(np.interp(t_out, t_in, a).astype(np.int16).tobytes())
+        data = bytes(in_data)
+        if self._loud_enough(data):
+            a = np.frombuffer(data, dtype=np.int16).astype(np.float32)
+            n_out = int(len(a) * TARGET_RATE / self._native_rate)
+            t_out = np.arange(n_out) / TARGET_RATE
+            t_in = np.arange(len(a)) / self._native_rate
+            self.on_chunk(np.interp(t_out, t_in, a).astype(np.int16).tobytes())
+        else:
+            n_out = int(len(data) // 2 * TARGET_RATE / self._native_rate)
+            self.on_chunk(b"\x00" * (n_out * 2))
 
     def _loud_enough(self, pcm) -> bool:
         if self.min_rms <= 0:

@@ -217,7 +217,12 @@ def cmd_test_ear(cfg, seconds=0, debug=False) -> int:
     from .ear import Ear
     from .mic import MicListener
 
-    ear = Ear(cfg.vosk_model)
+    def on_raw(d):
+        words = d.get("result") or []
+        conf = sum(w.get("conf", 1.0) for w in words) / max(len(words), 1)
+        print(f"  raw: {d.get('text', '')!r} conf={conf:.2f}")
+
+    ear = Ear(cfg.vosk_model, on_raw=on_raw if debug else None)
     got: queue.Queue = queue.Queue()
 
     def on_chunk(pcm: bytes):
