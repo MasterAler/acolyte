@@ -97,11 +97,22 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
         if not sess.recording:
             voice.ack("error")
             return
-        sess.offtopic = not sess.offtopic
-        kind = "offtopic_on" if sess.offtopic else "offtopic_off"
-        mk = sess.add_marker(kind, raw)
-        voice.ack(kind)
-        print(f"[{mk['tcode']}] {kind}")
+        if sess.offtopic:
+            voice.ack("already")
+            return
+        sess.offtopic = True
+        mk = sess.add_marker("offtopic_on", raw)
+        voice.ack("offtopic")
+        print(f"[{mk['tcode']}] оффтоп начался")
+
+    elif intent == "ontopic":
+        if not sess.offtopic:
+            voice.ack("already")
+            return
+        sess.offtopic = False
+        mk = sess.add_marker("offtopic_off", raw)
+        voice.ack("offtopic_off")
+        print(f"[{mk['tcode']}] оффтоп окончен")
 
     elif intent == "undo":
         mk = sess.undo_last()
@@ -156,13 +167,13 @@ def cmd_serve(cfg, verbose=False, no_summarize=False) -> int:
 
             keyboard.add_hotkey("ctrl+alt+j", lambda: events.put(("hot", "toggle")))
             keyboard.add_hotkey("ctrl+alt+s", lambda: events.put(("hot", "solution")))
-            keyboard.add_hotkey("ctrl+alt+o", lambda: events.put(("hot", "offtopic")))
+            keyboard.add_hotkey("ctrl+alt+o", lambda: events.put(("hot", "offtopic" if not sess.offtopic else "ontopic")))
             keyboard.add_hotkey("ctrl+alt+k", lambda: events.put(("hot", "finish")))
             print("хоткеи: Ctrl+Alt+J запись/пауза · +S решение · +O оффтоп · +K конец\n")
         except Exception:
             print("хоткеи недоступны (pip install keyboard)\n")
 
-    print("Аколит на посту. Команды: «Аколит, запись» · «стоп» · «это решение» · «это оффтоп» · «отмена» · «конец». Ctrl+C — выход.\n")
+    print("Аколит на посту. Команды: «Аколит, запись» · «стоп» · «это решение» · «это оффтоп» · «оффтоп окончен» · «отмена» · «конец». Ctrl+C — выход.\n")
     mic.start()
     try:
         while True:

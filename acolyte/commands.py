@@ -17,7 +17,8 @@ INTENTS: dict[str, list[str]] = {
     "pause": ["стоп", "пауза", "подожди"],
     "finish": ["конец", "заверши", "финиш"],
     "solution": ["решение", "решено"],
-    "offtopic": ["оффтоп", "офтоп", "не по теме", "мимо"],
+    "offtopic": ["это оффтоп", "оффтоп", "офтоп", "не по теме"],
+    "ontopic": ["оффтоп окончен", "офтоп окончен", "оффтоп закончен", "в тему"],
     "undo": ["отмена", "отмени"],
 }
 
@@ -46,12 +47,16 @@ def match(text: str) -> tuple[str, str] | None:
     compact = re.sub(r"\s+", "", norm)
     if not _wake_present(norm, compact):
         return None
+    # длинные ключевые слова вперёд: «оффтоп окончен» не должен проигрывать «оффтоп»
+    pairs = sorted(
+        ((kw, intent) for intent, kws in INTENTS.items() for kw in kws),
+        key=lambda p: -len(p[0]),
+    )
     best, best_score = None, 0
-    for intent, keywords in INTENTS.items():
-        for kw in keywords:
-            score = fuzz.partial_ratio(kw, norm)
-            if score > best_score:
-                best, best_score = intent, score
+    for kw, intent in pairs:
+        score = fuzz.partial_ratio(kw, norm)
+        if score > best_score:
+            best, best_score = intent, score
     if best is None or best_score < INTENT_THRESHOLD:
         return "unknown", text
     return best, text
@@ -63,6 +68,8 @@ if __name__ == "__main__":
         ("акколит это решение", "solution"),
         ("а колит стоп", "pause"),
         ("аколит это оффтоп", "offtopic"),
+        ("аколит оффтоп окончен", "ontopic"),
+        ("аколит офтоп окончен", "ontopic"),
         ("так вот аколит это решение точно", "solution"),
         ("аколет заверши встречу", "finish"),
         ("аколит отмена", "undo"),
