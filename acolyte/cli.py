@@ -106,6 +106,10 @@ def _dispatch(intent, raw, sess, obs, voice, cfg, no_summarize) -> None:
     elif intent == "undo":
         mk = sess.undo_last()
         if mk:
+            if mk["kind"] == "offtopic_on":
+                sess.offtopic = False
+            elif mk["kind"] == "offtopic_off":
+                sess.offtopic = True
             voice.ack("undo")
             print(f"снят маркер {mk['kind']} @ {mk['tcode']}")
         else:
