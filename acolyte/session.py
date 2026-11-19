@@ -36,11 +36,10 @@ class SessionState:
     # --- тайминги -----------------------------------------------------------
 
     def active_seconds(self) -> float:
-        if self._rec_started_at is None:
-            return 0.0
-        if self.paused:
-            return self._active_before_pause
-        return self._active_before_pause + (time.time() - self._rec_started_at)
+        # во время паузы _rec_started_at обнулен, но накопленное время валидно
+        if self._rec_started_at is not None:
+            return self._active_before_pause + (time.time() - self._rec_started_at)
+        return self._active_before_pause
 
     def _fmt(self, secs: float) -> str:
         secs = max(0, int(secs))

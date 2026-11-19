@@ -86,14 +86,14 @@ class ObsBridge:
         return self._req
 
     def record_status(self) -> dict:
+        # obsws-python 1.8 вешает ответ на сам класс; поля называются output_*
         st = self.req.get_record_status()
-        # obsws-python при пустом ответе (не пишем) может вернуть класс вместо экземпляра
-        active = getattr(st, "active", None)
-        paused = getattr(st, "paused", None)
+        active = getattr(st, "output_active", None)
+        paused = getattr(st, "output_paused", None)
         return {
             "active": None if active is None else bool(active),
             "paused": None if paused is None else bool(paused),
-            "duration_ms": getattr(st, "duration", 0) or 0,
+            "duration_ms": getattr(st, "output_duration", 0) or 0,
         }
 
     def start(self):
