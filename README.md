@@ -36,7 +36,7 @@
 ## Установка
 
 ```bash
-cd D:\Projects\acolyte
+git clone https://github.com/MasterAler/acolyte.git && cd acolyte
 py -3.11 -m venv .venv
 .venv\Scripts\pip install -e ".[voice]"
 .venv\Scripts\python install_models.py     # модель Vosk (~45 МБ)
